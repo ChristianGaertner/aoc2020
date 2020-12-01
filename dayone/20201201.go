@@ -1,4 +1,4 @@
-package main
+package dayone
 
 import (
 	"bufio"
@@ -10,19 +10,21 @@ import (
 
 const _sumTarget = 2020
 
-func Solve20201201() error {
-	fmt.Println("---- 2020 12 01 ----")
-	defer func() {
-		fmt.Println("----    END     ----")
-	}()
-	err := Solve20201201PartOne()
+type Solver struct {}
+
+func (Solver) Solve() error {
+	err := SolvePartOne()
 	if err != nil {
 		return err
 	}
-	return Solve20201201PartTwo()
+	return SolvePartTwo()
 }
 
-func Solve20201201PartOne() error {
+func (Solver) Day() string {
+	return "2020 12 01";
+}
+
+func SolvePartOne() error {
 	numbers, err := _read()
 	if err != nil {
 		return err
@@ -39,7 +41,7 @@ func Solve20201201PartOne() error {
 	return nil
 }
 
-func Solve20201201PartTwo() error {
+func SolvePartTwo() error {
 	numbers, err := _read()
 	if err != nil {
 		return err

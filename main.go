@@ -1,8 +1,13 @@
 package main
 
+import (
+	"github.com/ChristianGaertner/aoc2020/common"
+	"github.com/ChristianGaertner/aoc2020/dayone"
+)
+
 func main() {
-	err := Solve20201201()
-	if err != nil {
+	s := common.WithTiming(dayone.Solver{})
+	if err := s.Solve(); err != nil {
 		panic(err)
 	}
 }
