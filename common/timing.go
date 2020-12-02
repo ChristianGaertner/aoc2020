@@ -10,7 +10,6 @@ type Solver interface {
 	Day() string
 }
 
-
 type withTiming struct {
 	Solver Solver
 }
@@ -21,7 +20,7 @@ func WithTiming(s Solver) Solver {
 	}
 }
 
-func (w *withTiming) Solve() error  {
+func (w *withTiming) Solve() error {
 	startTime := time.Now()
 
 	defer func() {

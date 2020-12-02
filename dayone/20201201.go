@@ -10,7 +10,7 @@ import (
 
 const _sumTarget = 2020
 
-type Solver struct {}
+type Solver struct{}
 
 func (Solver) Solve() error {
 	err := SolvePartOne()
@@ -21,7 +21,7 @@ func (Solver) Solve() error {
 }
 
 func (Solver) Day() string {
-	return "2020 12 01";
+	return "2020 12 01"
 }
 
 func SolvePartOne() error {
@@ -33,7 +33,7 @@ func SolvePartOne() error {
 	fmt.Println("Part One")
 	for i, a := range numbers {
 		for _, b := range numbers[i:] {
-			if a + b == _sumTarget {
+			if a+b == _sumTarget {
 				fmt.Println(a * b)
 			}
 		}
@@ -51,7 +51,7 @@ func SolvePartTwo() error {
 	for i, a := range numbers {
 		for j, b := range numbers[i:] {
 			for _, c := range numbers[j:] {
-				if a + b + c == _sumTarget {
+				if a+b+c == _sumTarget {
 					fmt.Println(a * b * c)
 				}
 			}
