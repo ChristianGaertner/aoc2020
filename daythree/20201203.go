@@ -52,6 +52,11 @@ func (r *Row) String() string {
 	return res
 }
 
+type Slope struct {
+	DX int
+	DY int
+}
+
 func (Solver) Solve() error {
 	err := SolvePartOne()
 	if err != nil {
@@ -70,16 +75,21 @@ func SolvePartOne() error {
 		return err
 	}
 
+	slope := Slope{
+		DX: 3,
+		DY: 1,
+	}
+
 	var numTrees int
 
 	x := 0
 
-	for y := 0; y < mp.Height(); y++ {
+	for y := 0; y < mp.Height(); y += slope.DY {
 		if mp.IsTreeAt(x, y) {
 			numTrees += 1
 		}
 
-		x += 3
+		x += slope.DX
 	}
 
 	fmt.Printf("numTrees=%d\n", numTrees)
@@ -87,6 +97,38 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
+	mp, err := _read()
+	if err != nil {
+		return err
+	}
+
+	slopes := []Slope{
+		{DX: 1, DY: 1},
+		{DX: 3, DY: 1},
+		{DX: 5, DY: 1},
+		{DX: 7, DY: 1},
+		{DX: 1, DY: 2},
+	}
+
+	res := 1
+
+	for _, slope := range slopes {
+		var numTrees int
+
+		x := 0
+
+		for y := 0; y < mp.Height(); y += slope.DY {
+			if mp.IsTreeAt(x, y) {
+				numTrees += 1
+			}
+
+			x += slope.DX
+		}
+
+		res *= numTrees
+	}
+
+	fmt.Printf("result=%d\n", res)
 	return nil
 }
 
