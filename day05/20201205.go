@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 )
 
 type BSP string
@@ -90,9 +91,29 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	bsps, err := _read()
 	if err != nil {
 		return err
+	}
+
+	var ids []int
+
+	for _, bsp := range bsps {
+		ids = append(ids, bsp.ID())
+	}
+
+	if len(ids) < 1 || ids == nil {
+		panic("NO IDS FOND")
+	}
+
+	sort.Ints(ids)
+
+	last := ids[0] - 1
+	for _, id := range ids {
+		if last+1 != id {
+			fmt.Printf("CANDIATE: %d\n", last+1)
+		}
+		last = id
 	}
 
 	return nil
