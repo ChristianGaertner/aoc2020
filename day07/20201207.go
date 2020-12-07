@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -13,6 +14,30 @@ type Rule string
 
 func (r Rule) CanHold(bag Bag) bool {
 	return strings.Contains(string(r), string(bag)) && !strings.HasPrefix(string(r), string(bag))
+}
+
+func (r Rule) Holds() map[Bag]int {
+	i := strings.Index(string(r), "bags contain ")
+	relevant := strings.TrimSpace(string(r[i+len("bags contain ") : len(r)-1]))
+
+	ret := make(map[Bag]int)
+
+	for _, h := range strings.Split(relevant, ",") {
+		h = strings.TrimSpace(h)
+		if strings.Contains(h, "no other") {
+			continue
+		}
+		num, err := strconv.Atoi(h[:1])
+		if err != nil {
+			fmt.Println(h)
+			panic(err)
+		}
+		name := strings.TrimSpace(h[1 : len(h)-4])
+
+		ret[Bag(name)] = num
+	}
+
+	return ret
 }
 
 func (r Rule) BagName() Bag {
@@ -69,6 +94,17 @@ func (Solver) Day() string {
 	return "2020 12 07"
 }
 
+type ContainsMap map[Bag]map[Bag]int
+
+func (contains ContainsMap) Count(bag Bag) int {
+	var total int
+	for child, num := range contains[bag] {
+		total += contains.Count(child) * num
+	}
+
+	return total + 1
+}
+
 func SolvePartOne() error {
 	rules, err := _read()
 	if err != nil {
@@ -87,10 +123,18 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	rules, err := _read()
 	if err != nil {
 		return err
 	}
+
+	contains := ContainsMap(make(map[Bag]map[Bag]int))
+
+	for _, r := range rules {
+		contains[r.BagName()] = r.Holds()
+	}
+
+	fmt.Println(contains.Count("shiny gold") - 1)
 
 	return nil
 }
