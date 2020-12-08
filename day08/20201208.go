@@ -18,11 +18,11 @@ type Interpreter struct {
 	Acc int
 }
 
-func (i *Interpreter) Exec(ins []Instruction) int {
+func (i *Interpreter) Exec(ins []Instruction) (int, bool) {
 	seen := make(map[int]bool)
 	for p := 0; p < len(ins); {
 		if seen[p] {
-			return i.Acc
+			return i.Acc, false
 		}
 		seen[p] = true
 		c := ins[p]
@@ -39,7 +39,7 @@ func (i *Interpreter) Exec(ins []Instruction) int {
 			continue
 		}
 	}
-	return 0
+	return i.Acc, true
 }
 
 func (Solver) Solve() error {
@@ -62,7 +62,7 @@ func SolvePartOne() error {
 
 	i := Interpreter{}
 
-	res := i.Exec(instructions)
+	res, _ := i.Exec(instructions)
 
 	fmt.Printf("acc=%d\n", res)
 
@@ -70,10 +70,40 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	instructions, err := _read()
 	if err != nil {
 		return err
 	}
+
+	var res int
+	needsRecheck := true
+
+	checkStart := len(instructions)
+
+	tries := 0
+	for needsRecheck && tries <= len(instructions) {
+		tries++
+
+		testSet := make([]Instruction, len(instructions))
+		copy(testSet, instructions)
+
+		for i := checkStart - 1; i >= 0; i-- {
+			if testSet[i].Type == "jmp" {
+				testSet[i].Type = "nop"
+				checkStart = i
+				break
+			}
+		}
+
+		i := Interpreter{}
+		r, terminated := i.Exec(testSet)
+		if terminated {
+			res = r
+		}
+		needsRecheck = !terminated
+	}
+
+	fmt.Printf("acc=%d\n", res)
 
 	return nil
 }
