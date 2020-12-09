@@ -2,7 +2,9 @@ package day09
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 )
@@ -33,32 +35,87 @@ func IsValid(n int64, window []int64) bool {
 	return false
 }
 
-func SolvePartOne() error {
-	numbers, err := _read()
-	if err != nil {
-		return err
-	}
-
-	windowLen := 25
-
+func FindInvalid(windowLen int, numbers []int64) int64 {
 	for i, n := range numbers {
 		if i < windowLen {
 			continue
 		}
 		window := numbers[i-windowLen : i]
 		if !IsValid(n, window) {
-			fmt.Println(n)
+			return n
 		}
 	}
+	return -1
+}
+
+func SolvePartOne() error {
+	numbers, err := _read()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(FindInvalid(25, numbers))
 
 	return nil
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	numbers, err := _read()
 	if err != nil {
 		return err
 	}
+
+	invalid := FindInvalid(25, numbers)
+	if invalid == -1 {
+		return errors.New("no invalid number found")
+	}
+
+	var tally int64
+	tallyStart := 0
+
+	var contSet []int64
+
+	for i := 0; i < len(numbers); {
+		tally += numbers[i]
+
+		if tally == invalid {
+			contSet = numbers[tallyStart : i+1]
+			break
+		}
+
+		if tally < invalid {
+			// continue
+			i++
+		} else {
+			// go back
+			i = tallyStart + 1
+			tally = 0
+			tallyStart++
+		}
+	}
+
+	if contSet == nil {
+		return errors.New("no contiguous set found")
+	}
+
+	var sum int64
+	min := int64(math.MaxInt64)
+	max := int64(math.MinInt64)
+	for _, n := range contSet {
+		if n < min {
+			min = n
+		}
+		if n > max {
+			max = n
+		}
+		sum += n
+	}
+
+	if sum != invalid {
+		return errors.New("check failed sum != invalid")
+	}
+
+	fmt.Printf("min=%d\tmax=%d\tsolution=%d\n", min, max, min+max)
 
 	return nil
 }
