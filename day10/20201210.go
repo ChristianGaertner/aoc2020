@@ -6,50 +6,37 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 )
 
 type Solver struct{}
 
-type Adapter struct {
-	Rating   int
-	IsDevice bool
-}
+type Rating int
 
-func DeviceFromAdapter(as []Adapter) Adapter {
+func DeviceFromAdapter(as []Rating) Rating {
 	max := math.MinInt32
 
 	for _, a := range as {
-		if a.Rating > max {
-			max = a.Rating
+		if int(a) > max {
+			max = int(a)
 		}
 	}
 
-	return Adapter{
-		Rating:   max + 3,
-		IsDevice: true,
-	}
+	return Rating(max + 3)
 }
 
-func FindNextAdapter(jolts int, as []Adapter) (Adapter, []Adapter) {
-	var minIndex int
-	minAdapter := Adapter{
-		Rating: math.MaxInt32,
+func Diffs(as []Rating) []int {
+	sort.Slice(as, func(i, j int) bool {
+		return as[i] < as[j]
+	})
+	var diffs []int
+	var c Rating
+	for _, a := range as {
+		diffs = append(diffs, int(a-c))
+		c = a
 	}
-
-	for i, a := range as {
-		if jolts+3 < a.Rating {
-			continue
-		}
-		if a.Rating < minAdapter.Rating {
-			minIndex = i
-			minAdapter = a
-		}
-	}
-
-	next := append(as[:minIndex], as[minIndex+1:]...)
-
-	return minAdapter, next
+	return diffs
 }
 
 func (Solver) Solve() error {
@@ -71,18 +58,7 @@ func SolvePartOne() error {
 	}
 
 	adapter = append(adapter, DeviceFromAdapter(adapter))
-
-	currentJolts := 0
-
-	toChain := adapter[:]
-
-	var a Adapter
-	var diffs []int
-	for range adapter {
-		a, toChain = FindNextAdapter(currentJolts, toChain)
-		diffs = append(diffs, a.Rating-currentJolts)
-		currentJolts = a.Rating
-	}
+	diffs := Diffs(adapter)
 
 	var numOneDiff int
 	var numThreeDiff int
@@ -102,15 +78,28 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	adapter, err := _read()
 	if err != nil {
 		return err
 	}
 
+	adapter = append(adapter, DeviceFromAdapter(adapter))
+	sort.Slice(adapter, func(i, j int) bool {
+		return adapter[i] < adapter[j]
+	})
+
+	acc := map[Rating]int{0: 1}
+
+	for _, a := range adapter {
+		acc[a] = acc[a-1] + acc[a-2] + acc[a-3]
+	}
+
+	fmt.Println(acc[adapter[len(adapter)-1]])
+
 	return nil
 }
 
-func _read() ([]Adapter, error) {
+func _read() ([]Rating, error) {
 	file, err := os.Open("data/10.txt")
 	if err != nil {
 		return nil, err
@@ -119,7 +108,7 @@ func _read() ([]Adapter, error) {
 
 	scanner := bufio.NewScanner(file)
 
-	var lines []Adapter
+	var lines []Rating
 
 	for scanner.Scan() {
 		raw := scanner.Text()
@@ -127,7 +116,7 @@ func _read() ([]Adapter, error) {
 		if err != nil {
 			return nil, err
 		}
-		lines = append(lines, Adapter{Rating: n})
+		lines = append(lines, Rating(n))
 	}
 
 	return lines, nil
