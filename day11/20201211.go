@@ -42,23 +42,6 @@ func (f FerrySeats) Clone() FerrySeats {
 	return next
 }
 
-func (f FerrySeats) Step() FerrySeats {
-	next := f.Clone()
-
-	for y, row := range f {
-		for x, column := range row {
-			adj := f.Adjacent(x, y)
-			if column == SeatEmpty && NoOccupied(adj) {
-				next.SetSeat(x, y, SeatOccupied)
-			} else if column == SeatOccupied && NumOccupied(adj) >= 4 {
-				next.SetSeat(x, y, SeatEmpty)
-			}
-		}
-	}
-
-	return next
-}
-
 func (f FerrySeats) SetSeat(x, y int, v Seat) {
 	f[y][x] = v
 }
@@ -80,6 +63,35 @@ func (f FerrySeats) Adjacent(x, y int) []Seat {
 			}
 
 			ad = append(ad, f[py][px])
+		}
+	}
+	return ad
+}
+
+func (f FerrySeats) AdjacentVisible(x, y int) []Seat {
+	var ad []Seat
+
+	for dx := -1; dx <= 1; dx++ {
+	outer:
+		for dy := -1; dy <= 1; dy++ {
+			if dy == 0 && dx == 0 {
+				continue
+			}
+
+			for i := 1; i < 1000; i++ {
+				py := y + dy*i
+				px := x + dx*i
+				if py < 0 || py >= len(f) || px < 0 || px >= len(f[0]) {
+					continue outer
+				}
+
+				s := f[py][px]
+				if s == SeatFloor {
+					continue
+				}
+				ad = append(ad, f[py][px])
+				continue outer
+			}
 		}
 	}
 	return ad
@@ -162,9 +174,19 @@ func SolvePartOne() error {
 		return err
 	}
 
-	prev := ferry.Clone()
+	prev := ferry
 	for i := 0; i < 100; i++ {
-		next := prev.Step()
+		next := prev.Clone()
+		for y, row := range prev {
+			for x, column := range row {
+				adj := prev.Adjacent(x, y)
+				if column == SeatEmpty && NoOccupied(adj) {
+					next.SetSeat(x, y, SeatOccupied)
+				} else if column == SeatOccupied && NumOccupied(adj) >= 4 {
+					next.SetSeat(x, y, SeatEmpty)
+				}
+			}
+		}
 
 		if prev.Eq(next) {
 			break
@@ -178,10 +200,33 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	ferry, err := _read()
 	if err != nil {
 		return err
 	}
+
+	prev := ferry
+	for i := 0; i < 100; i++ {
+		next := prev.Clone()
+
+		for y, row := range prev {
+			for x, column := range row {
+				adj := prev.AdjacentVisible(x, y)
+				if column == SeatEmpty && NoOccupied(adj) {
+					next.SetSeat(x, y, SeatOccupied)
+				} else if column == SeatOccupied && NumOccupied(adj) >= 5 {
+					next.SetSeat(x, y, SeatEmpty)
+				}
+			}
+		}
+
+		if prev.Eq(next) {
+			break
+		}
+		prev = next
+	}
+
+	fmt.Println(prev.NumOccupied())
 
 	return nil
 }
@@ -206,6 +251,8 @@ func _read() (FerrySeats, error) {
 				seats = append(seats, SeatFloor)
 			} else if r == "L" {
 				seats = append(seats, SeatEmpty)
+			} else if r == "#" {
+				seats = append(seats, SeatOccupied)
 			} else {
 				return nil, errors.New("unknown seat type")
 			}
