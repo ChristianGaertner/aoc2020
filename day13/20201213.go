@@ -20,7 +20,7 @@ func (Solver) Solve() error {
 }
 
 func (Solver) Day() string {
-	return "2020 12 12"
+	return "2020 12 13"
 }
 
 func SolvePartOne() error {
@@ -33,6 +33,9 @@ func SolvePartOne() error {
 	diff := math.MaxInt32
 
 	for _, b := range buses {
+		if b == -1 {
+			continue
+		}
 		for i := 0; i < ts*2; i++ {
 			t := b * i
 			if t < ts {
@@ -54,10 +57,25 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, _, err := _read()
+	_, buses, err := _read()
 	if err != nil {
 		return err
 	}
+
+	pos := 0
+	offset := 1
+
+	for i, b := range buses {
+		if b == -1 {
+			continue
+		}
+		for ((pos + i) % b) != 0 {
+			pos += offset
+		}
+		offset *= b
+	}
+
+	fmt.Println(pos)
 
 	return nil
 }
@@ -82,6 +100,7 @@ func _read() (int, []int, error) {
 	scanner.Scan()
 	for _, bus := range strings.Split(scanner.Text(), ",") {
 		if bus == "x" {
+			buses = append(buses, -1)
 			continue
 		}
 		b, err := strconv.Atoi(bus)
