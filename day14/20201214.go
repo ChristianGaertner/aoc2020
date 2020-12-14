@@ -9,11 +9,12 @@ import (
 	"strings"
 )
 
-type Mask []byte
+type Mask [2]int
 
 type Instruction struct {
-	Mask Mask
-	Set  [2]int
+	Mask   Mask
+	IsMask bool
+	Set    [2]int
 }
 
 type Solver struct{}
@@ -42,19 +43,9 @@ func SolvePartOne() error {
 	mmask := 0
 
 	for _, ins := range instructions {
-		if len(ins.Mask) != 0 {
-			mask = 0
-			mmask = 0
-			for _, c := range ins.Mask {
-				mask = mask << 1
-				mmask = mmask << 1
-				if c != 'X' {
-					mmask |= 1
-					if c == '1' {
-						mask |= 1
-					}
-				}
-			}
+		if ins.IsMask {
+			mask = ins.Mask[0]
+			mmask = ins.Mask[1]
 			continue
 		}
 		addr := ins.Set[0]
@@ -72,11 +63,48 @@ func SolvePartOne() error {
 	return nil
 }
 
+func SetAll(register map[int]int, addr int, rm int, value int) {
+	if rm == 0 {
+		register[addr] = value
+		return
+	}
+	b := rm & -rm
+	rm = rm &^ b
+	SetAll(register, addr, rm, value)
+	SetAll(register, addr|b, rm, value)
+}
+
 func SolvePartTwo() error {
-	_, err := _read()
+	instructions, err := _read()
 	if err != nil {
 		return err
 	}
+
+	register := make(map[int]int)
+
+	mask := 0
+	mmask := 0
+
+	for _, ins := range instructions {
+		if ins.IsMask {
+			mask = ins.Mask[0]
+			mmask = ins.Mask[1]
+			continue
+		}
+
+		addr := ins.Set[0]
+		v := ins.Set[1]
+
+		addr = (addr & mmask) | mask
+		SetAll(register, addr, ((1<<36)-1)&^mmask, v)
+	}
+
+	var sum int
+	for _, v := range register {
+		sum += v
+	}
+
+	fmt.Println(sum)
 
 	return nil
 }
@@ -96,7 +124,22 @@ func _read() ([]Instruction, error) {
 		raw := scanner.Text()
 
 		if strings.HasPrefix(raw, "mask") {
-			rows = append(rows, Instruction{Mask: []byte(raw[6:])})
+			mask := 0
+			mmask := 0
+			for _, c := range []byte(raw[6:]) {
+				mask = mask << 1
+				mmask = mmask << 1
+				if c != 'X' {
+					mmask |= 1
+					if c == '1' {
+						mask |= 1
+					}
+				}
+			}
+
+			rows = append(rows, Instruction{IsMask: true, Mask: [2]int{
+				mask, mmask,
+			}})
 		} else {
 			re := regexp.MustCompile(`^mem\[(\d*)]\s*=\s*(\d*)`)
 			matches := re.FindAllStringSubmatch(raw, -1)
