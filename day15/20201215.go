@@ -19,7 +19,7 @@ func (Solver) Solve() error {
 }
 
 func (Solver) Day() string {
-	return "2020 12 1"
+	return "2020 12 15"
 }
 
 func SolvePartOne() error {
@@ -62,10 +62,40 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	numbers, err := _read()
 	if err != nil {
 		return err
 	}
+
+	last := make(map[int]int)
+	diffs := make(map[int]int)
+
+	var lastNumber int
+	for t := 1; t <= 30000000; t++ {
+		if t <= len(numbers) {
+			lastNumber = numbers[t-1]
+			v, ok := last[numbers[t-1]]
+			last[lastNumber] = t
+			if ok {
+				diffs[lastNumber] = t - v
+			}
+			continue
+		}
+
+		v, ok := diffs[lastNumber]
+		if ok {
+			lastNumber = v
+		} else {
+			lastNumber = 0
+		}
+		v, ok = last[lastNumber]
+		if ok {
+			diffs[lastNumber] = t - v
+		}
+		last[lastNumber] = t
+	}
+
+	fmt.Println(lastNumber)
 
 	return nil
 }
