@@ -13,6 +13,7 @@ type Range [2]int
 
 type FieldRule struct {
 	ValidRanges []Range
+	Name        string
 }
 
 func (f FieldRule) Valid(t int) bool {
@@ -42,7 +43,7 @@ func (Solver) Day() string {
 }
 
 func SolvePartOne() error {
-	rules, tickets, err := _read()
+	rules, tickets, _, err := _read()
 	if err != nil {
 		return err
 	}
@@ -67,25 +68,81 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, _, err := _read()
+	rules, tickets, myTicket, err := _read()
 	if err != nil {
 		return err
 	}
 
+	var validTickets []Ticket
+
+o:
+	for _, t := range tickets {
+	t:
+		for _, f := range t {
+			for _, r := range rules {
+				if r.Valid(f) {
+					continue t
+				}
+			}
+			continue o
+		}
+		validTickets = append(validTickets, t)
+	}
+
+	fi := make(map[string]int)
+	locked := make(map[int]bool)
+
+	for len(fi) != len(myTicket) {
+		matches := make(map[string][]int)
+
+		for _, r := range rules {
+			for pos := 0; pos < len(myTicket); pos++ {
+				if locked[pos] {
+					continue
+				}
+
+				allValid := true
+				for _, t := range validTickets {
+					allValid = allValid && r.Valid(t[pos])
+				}
+				if allValid {
+					matches[r.Name] = append(matches[r.Name], pos)
+				}
+			}
+
+			if len(matches[r.Name]) == 1 {
+				lockedIndex := matches[r.Name][0]
+				fi[r.Name] = lockedIndex
+				locked[lockedIndex] = true
+			}
+
+		}
+	}
+
+	acc := int64(1)
+
+	for key, idx := range fi {
+		if strings.HasPrefix(key, "departure") {
+			acc *= int64(myTicket[idx])
+		}
+	}
+	fmt.Println(acc)
+
 	return nil
 }
 
-func _read() (map[string]FieldRule, []Ticket, error) {
+func _read() ([]FieldRule, []Ticket, Ticket, error) {
 	file, err := os.Open("data/16.txt")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
-	rules := make(map[string]FieldRule)
+	var rules []FieldRule
 	var tickets []Ticket
+	var myTicket Ticket
 
 	m := 0
 
@@ -106,30 +163,33 @@ func _read() (map[string]FieldRule, []Ticket, error) {
 
 		switch m {
 		case 0:
-			s, r, err := parseRule(raw)
+			r, err := parseRule(raw)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			rules[s] = r
+			rules = append(rules, r)
 		case 1:
-			// ignore our ticket for now
-			continue
+			t, err := parseInts(raw)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			myTicket = t
 		case 2:
 			is, err := parseInts(raw)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			tickets = append(tickets, is)
 		}
 
 	}
 
-	return rules, tickets, nil
+	return rules, tickets, myTicket, nil
 }
 
 var re = regexp.MustCompile(`^(.*):\s(\d*)-(\d*)\sor\s(\d*)-(\d*)$`)
 
-func parseRule(in string) (string, FieldRule, error) {
+func parseRule(in string) (FieldRule, error) {
 	var r FieldRule
 	var name string
 	for _, match := range re.FindAllStringSubmatch(in, -1) {
@@ -141,7 +201,7 @@ func parseRule(in string) (string, FieldRule, error) {
 		bmi, err := strconv.Atoi(match[4])
 		bma, err := strconv.Atoi(match[5])
 		if err != nil {
-			return "", FieldRule{}, err
+			return r, err
 		}
 
 		r.ValidRanges = []Range{
@@ -150,7 +210,8 @@ func parseRule(in string) (string, FieldRule, error) {
 		}
 
 	}
-	return name, r, nil
+	r.Name = strings.Replace(name, " ", "_", 1)
+	return r, nil
 }
 
 func parseInts(in string) ([]int, error) {
@@ -163,4 +224,13 @@ func parseInts(in string) ([]int, error) {
 		res = append(res, n)
 	}
 	return res, nil
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
