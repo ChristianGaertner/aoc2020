@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type C [3]int
+type C [4]int
 
 func (c C) Add(q C) C {
 	var res C
@@ -18,12 +18,10 @@ func (c C) Add(q C) C {
 
 type Grid map[C]bool
 
-func (g Grid) NumNeighbours(c C) int {
+func (g Grid) NumNeighbours(c C, del []C) int {
 	var n int
 
-	de := delta(3)[1:]
-
-	for _, d := range de {
+	for _, d := range del {
 		if g[c.Add(d)] {
 			n++
 		}
@@ -32,17 +30,17 @@ func (g Grid) NumNeighbours(c C) int {
 	return n
 }
 
-func (g Grid) Step() Grid {
+func (g Grid) Step(del []C) Grid {
 	// expand
 	for p := range g {
-		for _, d := range delta(3)[1:] {
+		for _, d := range del {
 			g[p.Add(d)] = g[p.Add(d)]
 		}
 	}
 
 	next := make(Grid)
 	for c, r := range g {
-		numNeighbours := g.NumNeighbours(c)
+		numNeighbours := g.NumNeighbours(c, del)
 		if r {
 			next[c] = numNeighbours == 2 || numNeighbours == 3
 		} else {
@@ -86,8 +84,10 @@ func SolvePartOne() error {
 		return err
 	}
 
+	del := delta(3)[1:]
+
 	for c := 0; c < 6; c++ {
-		grid = grid.Step()
+		grid = grid.Step(del)
 	}
 
 	var acc int
@@ -103,10 +103,25 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	grid, err := _read()
 	if err != nil {
 		return err
 	}
+
+	del := delta(4)[1:]
+
+	for c := 0; c < 6; c++ {
+		grid = grid.Step(del)
+	}
+
+	var acc int
+	for _, r := range grid {
+		if r {
+			acc++
+		}
+	}
+
+	fmt.Println(acc)
 
 	return nil
 }
