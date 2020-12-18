@@ -3,11 +3,15 @@ package day18
 import (
 	"bufio"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"strconv"
+	"strings"
 )
 
-func Eval(e string) (int, int) {
+func EvalP1(e string) (int, int) {
 
 	var l *int
 	var r *int
@@ -36,7 +40,7 @@ func Eval(e string) (int, int) {
 				return a / b
 			}
 		case '(':
-			num, length := Eval(e[pos+1:])
+			num, length := EvalP1(e[pos+1:])
 			pos += length
 			if l == nil {
 				l = &num
@@ -74,6 +78,38 @@ func Eval(e string) (int, int) {
 	return *l, 0
 }
 
+func EvalP2(e ast.Expr) int {
+
+	switch e := e.(type) {
+	case *ast.BinaryExpr:
+		return EvalBinaryExpr(e)
+	case *ast.BasicLit:
+		switch e.Kind {
+		case token.INT:
+			i, _ := strconv.Atoi(e.Value)
+			return i
+		}
+	case *ast.ParenExpr:
+		return EvalP2(e.X)
+	}
+
+	return 0
+}
+
+func EvalBinaryExpr(exp *ast.BinaryExpr) int {
+	left := EvalP2(exp.X)
+	right := EvalP2(exp.Y)
+
+	switch exp.Op {
+	case token.ADD:
+		return left * right
+	case token.MUL:
+		return left + right
+	}
+
+	return 0
+}
+
 type Solver struct{}
 
 func (Solver) Solve() error {
@@ -96,7 +132,7 @@ func SolvePartOne() error {
 
 	var acc int
 	for _, ex := range expressions {
-		n, _ := Eval(ex)
+		n, _ := EvalP1(ex)
 		acc += n
 	}
 
@@ -106,10 +142,18 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	expressions, err := _read2()
 	if err != nil {
 		return err
 	}
+
+	var acc int
+	for _, ex := range expressions {
+		n := EvalP2(ex)
+		acc += n
+	}
+
+	fmt.Println(acc)
 
 	return nil
 }
@@ -133,6 +177,37 @@ func _read() ([]string, error) {
 		}
 
 		expr = append(expr, raw)
+	}
+
+	return expr, nil
+}
+
+func _read2() ([]ast.Expr, error) {
+	file, err := os.Open("data/18.txt")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var expr []ast.Expr
+
+	for scanner.Scan() {
+		raw := scanner.Text()
+		if raw[0] == ';' {
+			continue
+		}
+
+		raw = strings.ReplaceAll(raw, "+", "$")
+		raw = strings.ReplaceAll(raw, "*", "+")
+		raw = strings.ReplaceAll(raw, "$", "*")
+
+		tr, err := parser.ParseExpr(raw)
+		if err != nil {
+			return nil, err
+		}
+		expr = append(expr, tr)
 	}
 
 	return expr, nil
