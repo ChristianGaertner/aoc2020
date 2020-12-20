@@ -9,23 +9,37 @@ import (
 	"strconv"
 )
 
-type Tile struct {
-	ID   uint64
-	Data [][]bool
+type Image [][]bool
 
-	Neighbours map[image.Point]*Tile
-}
-
-func NewTile(id uint64) *Tile {
-	return &Tile{
-		ID:         id,
-		Neighbours: make(map[image.Point]*Tile),
+func NewImage(size image.Point, v bool) Image {
+	var img Image
+	for y := 0;  y < size.Y; y++ {
+		var row []bool
+		for x := 0; x < size.X; x++ {
+			row = append(row, v)
+		}
+		img = append(img, row)
 	}
+	return img
 }
 
-func (t *Tile) String() string {
+func (t Image) Get(p image.Point) bool {
+	if p.Y >= len(t) {
+		return false
+	}
+	if p.X >= len(t[p.Y]) {
+		return false
+	}
+
+	return t[p.Y][p.X]
+}
+func (t Image) Set(p image.Point, v bool) {
+	t[p.Y][p.X] = v
+}
+
+func (t Image) String() string {
 	var res string
-	for _, r := range t.Data {
+	for _, r := range t {
 		for _, c := range r {
 			if c {
 				res += "#"
@@ -38,6 +52,20 @@ func (t *Tile) String() string {
 	return res
 }
 
+type Tile struct {
+	ID   uint64
+	Data Image
+
+	Neighbours map[image.Point]*Tile
+}
+
+func NewTile(id uint64) *Tile {
+	return &Tile{
+		ID:         id,
+		Neighbours: make(map[image.Point]*Tile),
+	}
+}
+
 func (t *Tile) Flip() {
 	t.Data = Flip(t.Data)
 }
@@ -47,10 +75,8 @@ func (t *Tile) Rotate() {
 }
 
 func (t *Tile) HasRightNeighbour(o *Tile) bool {
-	size := len(t.Data)
-
 	for y := range t.Data {
-		if t.Data[y][size-1] != o.Data[y][0] {
+		if t.Data.Get(image.Pt(len(t.Data)-1, y)) != o.Data.Get(image.Pt(0, y)) {
 			return false
 		}
 	}
@@ -59,10 +85,8 @@ func (t *Tile) HasRightNeighbour(o *Tile) bool {
 }
 
 func (t *Tile) HasBottomNeighbour(o *Tile) bool {
-	size := len(t.Data)
-
-	for x := range t.Data[size-1] {
-		if t.Data[size-1][x] != o.Data[0][x] {
+	for x := range t.Data[len(t.Data)-1] {
+		if t.Data.Get(image.Pt(x, len(t.Data)-1)) != o.Data.Get(image.Pt(x, 0)) {
 			return false
 		}
 	}
@@ -70,38 +94,40 @@ func (t *Tile) HasBottomNeighbour(o *Tile) bool {
 	return true
 }
 
+const numPermutations = 8
+
 var (
 	N = image.Pt(0, -1)
 	E = image.Pt(1, 0)
 	S = image.Pt(0, 1)
-	W = image.Pt(-0, 0)
+	W = image.Pt(-1, 0)
 )
 
 func (t *Tile) HasNeighbor(o *Tile, modify bool) bool {
-	for _, c := range []image.Point{N, E, S, W} {
-		if _, ok := t.Neighbours[c]; ok {
+	for _, dir := range []image.Point{N, E, S, W} {
+		if _, ok := t.Neighbours[dir]; ok {
 			continue
 		}
 
-		for i := 0; i < 8; i++ {
-			if c == E && t.HasRightNeighbour(o) {
+		for i := 0; i < numPermutations; i++ {
+			if dir == N && o.HasBottomNeighbour(t) {
+				t.Neighbours[N] = o
+				o.Neighbours[S] = t
+				return true
+			}
+			if dir == E && t.HasRightNeighbour(o) {
 				t.Neighbours[E] = o
 				o.Neighbours[W] = t
 				return true
 			}
-			if c == W && o.HasRightNeighbour(t) {
-				t.Neighbours[W] = o
-				o.Neighbours[E] = t
-				return true
-			}
-			if c == S && t.HasBottomNeighbour(o) {
+			if dir == S && t.HasBottomNeighbour(o) {
 				t.Neighbours[S] = o
 				o.Neighbours[N] = t
 				return true
 			}
-			if c == N && o.HasBottomNeighbour(t) {
-				t.Neighbours[N] = o
-				o.Neighbours[S] = t
+			if dir == W && o.HasRightNeighbour(t) {
+				t.Neighbours[W] = o
+				o.Neighbours[E] = t
 				return true
 			}
 
@@ -121,6 +147,112 @@ func (t *Tile) HasNeighbor(o *Tile, modify bool) bool {
 	return false
 }
 
+func alignTiles(tiles []*Tile) map[uint64]*Tile {
+	tm := make(map[uint64]*Tile)
+	for _, t := range tiles {
+		tm[t.ID] = t
+	}
+
+	locked := make(map[uint64]bool)
+	// align a random tile
+	for tile := range tm {
+		locked[tile] = true
+		break
+	}
+
+	found := true
+	for found {
+		found = false
+		for tile := range locked {
+			for other := range tm {
+				if other == tile {
+					continue
+				}
+
+				_, l := locked[other]
+
+				if tm[tile].HasNeighbor(tm[other], !l) {
+					found = true
+					locked[other] = true
+				}
+			}
+		}
+	}
+	return tm
+}
+
+func Assemble(tiles map[uint64]*Tile) Image {
+	visited := make(map[uint64]bool)
+	q := make(map[uint64]image.Point)
+
+	var startTile *Tile
+
+	// visit the first tile
+	for _, t := range tiles {
+		startTile = t
+		visited[startTile.ID] = true
+		for n, p := range startTile.Neighbours {
+			q[p.ID] = n
+		}
+		break
+	}
+
+	if startTile == nil {
+		panic("WTF")
+	}
+
+	grid := map[image.Point]*Tile{
+		{}: startTile,
+	}
+
+	var minX, minY, maxX, maxY int
+	ts := len(startTile.Data) - 2
+	for len(q) > 0 {
+		for id, dir := range q {
+			delete(q, id)
+			visited[id] = true
+
+			for n, np := range tiles[id].Neighbours {
+				if _, ok := visited[np.ID]; !ok {
+					q[np.ID] = dir.Add(n)
+				}
+			}
+
+			grid[dir] = tiles[id]
+
+			if dir.X < minX {
+				minX = dir.X
+			}
+			if dir.Y < minY {
+				minY = dir.Y
+			}
+			if dir.X > maxX {
+				maxX = dir.X
+			}
+			if dir.Y > maxY {
+				maxY = dir.Y
+			}
+		}
+	}
+
+	borderWidth := 1
+	gs := maxX - minX + 1
+	dim := image.Pt(gs * ts, (maxY-minY+1)*ts)
+	img := NewImage(dim, false)
+	for y := minY; y <= maxY; y++ {
+		for x := minX; x <= maxX; x++ {
+			for tY, row := range grid[image.Pt(x, y)].Data[borderWidth : ts+1] {
+				dY := (y-minY)*ts + tY
+				for tX, v := range row[borderWidth : len(row)-1] {
+					dX := (x-minX)*ts + tX
+					img.Set(image.Pt(dX, dY), v)
+				}
+			}
+		}
+	}
+	return img
+}
+
 type Solver struct{}
 
 func (Solver) Solve() error {
@@ -136,52 +268,16 @@ func (Solver) Day() string {
 }
 
 func SolvePartOne() error {
-	allTiles, err := _read()
+	tiles, err := _read()
 	if err != nil {
 		return err
 	}
 
-	tm := make(map[uint64]*Tile)
-	for _, t := range allTiles {
-		tm[t.ID] = t
-	}
-
-	aligned := make(map[uint64]bool)
-	for id, tile := range tm {
-		if len(tile.Neighbours) != 0 {
-			aligned[id] = true
-		}
-	}
-
-	if len(aligned) == 0 {
-		for tile := range tm {
-			aligned[tile] = true
-			break
-		}
-	}
-
-	found := true
-	for found {
-		found = false
-		for tile := range aligned {
-			for other := range tm {
-				if other == tile {
-					continue
-				}
-
-				_, l := aligned[other]
-
-				if tm[tile].HasNeighbor(tm[other], !l) {
-					found = true
-					aligned[other] = true
-				}
-			}
-		}
-	}
+	aligned := alignTiles(tiles)
 
 	var acc uint64
 	acc += 1
-	for _, t := range tm {
+	for _, t := range aligned {
 		if len(t.Neighbours) == 2 {
 			acc *= t.ID
 		}
@@ -192,10 +288,68 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	tiles, err := _read()
 	if err != nil {
 		return err
 	}
+
+	aligned := alignTiles(tiles)
+	img := Assemble(aligned)
+	seaMonster := make(map[image.Point]bool)
+
+	for y, l := range []string{"                  # ", "#    ##    ##    ###", " #  #  #  #  #  #   "} {
+		for x, c := range l {
+			seaMonster[image.Pt(x, y)] = c == '#'
+		}
+	}
+
+	for i := 0; i < numPermutations; i++ {
+		found := make(map[image.Point]bool)
+		for y := range img {
+			for x := range img[y] {
+				p := image.Pt(x, y)
+				f := true
+				for m, M := range seaMonster {
+					if !M {
+						continue
+					}
+					if !img.Get(p.Add(m)) {
+						f = false
+						break
+					}
+
+				}
+				if f {
+					found[p] = true
+					// black out image part
+					for m, M := range seaMonster {
+						img.Set(p.Add(m), !(M || !img.Get(p.Add(m))))
+					}
+				}
+			}
+		}
+		if len(found) > 0 {
+			break
+		}
+		if i%2 == 0 {
+			img = Flip(img)
+		} else {
+			img = Flip(img)
+			img = Rotate(img)
+		}
+	}
+
+	var acc uint64
+
+	for _, yy := range img {
+		for _, xx := range yy {
+			if xx {
+				acc++
+			}
+		}
+	}
+
+	fmt.Println(acc)
 
 	return nil
 }
@@ -253,9 +407,9 @@ func _read() ([]*Tile, error) {
 	return tiles, nil
 }
 
-func Rotate(data [][]bool) [][]bool {
+func Rotate(data Image) Image {
 	size := len(data)
-	rotated := make([][]bool, size)
+	rotated := make(Image, size)
 
 	for y := 0; y < size; y++ {
 		rotated[y] = make([]bool, size)
@@ -270,9 +424,9 @@ func Rotate(data [][]bool) [][]bool {
 	return rotated
 }
 
-func Flip(data [][]bool) [][]bool {
+func Flip(data Image) Image {
 	size := len(data)
-	flipped := make([][]bool, size)
+	flipped := make(Image, size)
 
 	for i := 0; i < size; i++ {
 		flipped[i] = make([]bool, size)
