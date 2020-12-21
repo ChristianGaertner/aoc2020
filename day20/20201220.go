@@ -13,7 +13,7 @@ type Image [][]bool
 
 func NewImage(size image.Point, v bool) Image {
 	var img Image
-	for y := 0;  y < size.Y; y++ {
+	for y := 0; y < size.Y; y++ {
 		var row []bool
 		for x := 0; x < size.X; x++ {
 			row = append(row, v)
@@ -237,7 +237,7 @@ func Assemble(tiles map[uint64]*Tile) Image {
 
 	borderWidth := 1
 	gs := maxX - minX + 1
-	dim := image.Pt(gs * ts, (maxY-minY+1)*ts)
+	dim := image.Pt(gs*ts, (maxY-minY+1)*ts)
 	img := NewImage(dim, false)
 	for y := minY; y <= maxY; y++ {
 		for x := minX; x <= maxX; x++ {
