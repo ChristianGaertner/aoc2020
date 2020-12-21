@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -24,6 +25,16 @@ func NewSetFrom(o Set) Set {
 		r.Add(v)
 	}
 	return r
+}
+
+func (s Set) Single() string {
+	if len(s) != 1 {
+		panic("NOP")
+	}
+	for v := range s {
+		return v
+	}
+	panic("NOP")
 }
 
 func (s Set) Add(ts string) {
@@ -80,6 +91,39 @@ func (s Set) Intersect(o Set) Set {
 	return r
 }
 
+func FindAll(meals []Meal) (Set, Set) {
+	allIngredients := NewSet()
+	allAllergens := NewSet()
+
+	for _, m := range meals {
+		allIngredients.AddAll(m.Ing)
+		allAllergens.AddAll(m.Allergies)
+	}
+	return allIngredients, allAllergens
+}
+
+func FindCommon(meals []Meal) map[string]Set {
+	_, allAllergens := FindAll(meals)
+	common := make(map[string]Set)
+
+	for a := range allAllergens {
+		s := NewSet()
+		for _, meal := range meals {
+			if contains(meal.Allergies, a) {
+				ss := NewSet()
+				ss.AddAll(meal.Ing)
+				if len(s) == 0 {
+					s = s.Union(ss)
+				} else {
+					s = s.Intersect(ss)
+				}
+			}
+		}
+		common[a] = s
+	}
+	return common
+}
+
 type Solver struct{}
 
 func (Solver) Solve() error {
@@ -100,31 +144,8 @@ func SolvePartOne() error {
 		return err
 	}
 
-	allIngredients := NewSet()
-	allAllergens := NewSet()
-
-	for _, m := range meals {
-		allIngredients.AddAll(m.Ing)
-		allAllergens.AddAll(m.Allergies)
-	}
-
-	common := make(map[string]Set)
-
-	for a := range allAllergens {
-		s := NewSet()
-		for _, meal := range meals {
-			if contains(meal.Allergies, a) {
-				ss := NewSet()
-				ss.AddAll(meal.Ing)
-				if len(s) == 0 {
-					s = s.Union(ss)
-				} else {
-					s = s.Intersect(ss)
-				}
-			}
-		}
-		common[a] = s
-	}
+	allIngredients, _ := FindAll(meals)
+	common := FindCommon(meals)
 
 	haveIng := NewSet()
 	for _, c := range common {
@@ -149,10 +170,72 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	meals, err := _read()
 	if err != nil {
 		return err
 	}
+
+	allIngredients, allAllergens := FindAll(meals)
+	common := FindCommon(meals)
+
+	haveIng := NewSet()
+	for _, c := range common {
+		haveIng = haveIng.Union(c)
+	}
+
+	noHave := allIngredients.Subtract(haveIng)
+
+	allergenMap := make(map[string]Set)
+
+	for a := range allAllergens {
+		s := NewSet()
+		for _, m := range meals {
+			if contains(m.Allergies, a) {
+				ss := NewSet()
+				ss.AddAll(m.Ing)
+				ss = ss.Subtract(noHave)
+				if len(s) == 0 {
+					s = s.Union(ss)
+				} else {
+					s = s.Intersect(ss)
+				}
+			}
+		}
+		if len(s) > 0 {
+			allergenMap[a] = s
+		}
+	}
+
+	res := make(map[string]string)
+
+	for len(allergenMap) > 0 {
+		toRemove := NewSet()
+		for k, v := range allergenMap {
+			if len(v) == 1 {
+				res[k] = v.Single()
+				toRemove.Add(v.Single())
+			}
+		}
+		for k, v := range allergenMap {
+			allergenMap[k] = v.Subtract(toRemove)
+			if len(allergenMap[k]) == 0 {
+				delete(allergenMap, k)
+			}
+		}
+	}
+
+	var fs []string
+	for k := range res {
+		fs = append(fs, k)
+	}
+	sort.Strings(fs)
+
+	var answer string
+	for _, a := range fs {
+		answer += res[a] + ","
+	}
+
+	fmt.Println(strings.TrimRight(answer, ","))
 
 	return nil
 }
