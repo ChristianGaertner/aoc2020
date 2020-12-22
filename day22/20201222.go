@@ -19,6 +19,14 @@ func (s *Stack) Add(v ...int) {
 	*s = append(*s, v...)
 }
 
+func (s *Stack) Copy() Stack {
+	var res Stack
+	for _, v := range *s {
+		res = append(res, v)
+	}
+	return res
+}
+
 type Solver struct{}
 
 func (Solver) Solve() error {
@@ -77,11 +85,55 @@ func SolvePartOne() error {
 	return nil
 }
 
+func playRec(cardsA, cardsB Stack) (bool, Stack) {
+	seenA, seenB := make(map[string]bool), make(map[string]bool)
+	for {
+		if len(cardsA) == 0 {
+			return false, cardsB
+		}
+		if len(cardsB) == 0 {
+			return true, cardsA
+		}
+		hashA, hashB := fmt.Sprintf("%v", cardsA), fmt.Sprintf("%v", cardsB)
+
+		_, sA := seenA[hashA]
+		_, sB := seenB[hashB]
+		if sA || sB {
+			return true, cardsA
+		}
+		seenA[hashA] = true
+		seenB[hashB] = true
+
+		a, b := cardsA.Pop(), cardsB.Pop()
+
+		oneWins := a > b
+
+		if len(cardsA) >= a && len(cardsB) >= b {
+			oneWins, _ = playRec(cardsA.Copy()[:a], cardsB.Copy()[:b])
+		}
+
+		if oneWins {
+			cardsA.Add(a, b)
+		} else {
+			cardsB.Add(b, a)
+		}
+	}
+}
+
 func SolvePartTwo() error {
-	_, _, err := _read()
+	cardsA, cardsB, err := _read()
 	if err != nil {
 		return err
 	}
+
+	_, res := playRec(cardsA, cardsB)
+
+	var score int
+	for i, v := range res {
+		score += v * (len(res) - i)
+	}
+
+	fmt.Println(score)
 
 	return nil
 }
