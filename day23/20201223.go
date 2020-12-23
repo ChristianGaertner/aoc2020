@@ -95,6 +95,49 @@ func play(in []int) string {
 	return answer
 }
 
+func play2(size int, in []int) int {
+	cups := ring.New(size)
+	overflow := make([]*ring.Ring, size)
+	for _, i := range in {
+		cups.Value = i
+		overflow[i-1] = cups
+		cups = cups.Next()
+	}
+
+	maxN := 0
+	for i := max(cups) + 1; i <= size; i++ {
+		cups.Value = i
+		overflow[i-1] = cups
+		maxN = i
+		cups = cups.Next()
+	}
+
+	for i := 0; i < size; i++ {
+		picked := cups.Unlink(3)
+		dst := cups.Value.(int) - 1
+		if dst == 0 {
+			dst = max(cups)
+		}
+
+		for contains(picked, dst) {
+			dst--
+			if dst == 0 {
+				dst = maxN
+			}
+
+		}
+		dstRing := overflow[dst-1]
+		dstRing.Link(picked)
+		cups = cups.Next()
+	}
+
+	a := overflow[0]
+	b := a.Next()
+	c := b.Next()
+
+	return b.Value.(int) * c.Value.(int)
+}
+
 func SolvePartOne() error {
 	labels, err := _read()
 	if err != nil {
@@ -107,10 +150,12 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	labels, err := _read()
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(play2(1000000, labels))
 
 	return nil
 }
