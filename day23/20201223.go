@@ -95,7 +95,7 @@ func play(in []int) string {
 	return answer
 }
 
-func play2(size int, in []int) int {
+func play2(size int, moves int, in []int) int {
 	cups := ring.New(size)
 	overflow := make([]*ring.Ring, size)
 	for _, i := range in {
@@ -112,7 +112,7 @@ func play2(size int, in []int) int {
 		cups = cups.Next()
 	}
 
-	for i := 0; i < size; i++ {
+	for i := 0; i < moves; i++ {
 		picked := cups.Unlink(3)
 		dst := cups.Value.(int) - 1
 		if dst == 0 {
@@ -155,7 +155,7 @@ func SolvePartTwo() error {
 		return err
 	}
 
-	fmt.Println(play2(1000000, labels))
+	fmt.Println(play2(1000000, 10000000, labels))
 
 	return nil
 }
