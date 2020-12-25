@@ -22,6 +22,17 @@ func (Solver) Day() string {
 	return "2020 12 24"
 }
 
+func Neighbours() [6]image.Point {
+	return [6]image.Point{
+		image.Pt(2, 0),
+		image.Pt(1, 1),
+		image.Pt(-1, 1),
+		image.Pt(-2, 0),
+		image.Pt(-1, -1),
+		image.Pt(1, -1),
+	}
+}
+
 func resolve(ins string, ref image.Point) (string, image.Point) {
 	if strings.HasPrefix(ins, "e") {
 		return resolve(ins[1:], ref.Add(image.Pt(2, 0)))
@@ -76,10 +87,44 @@ func SolvePartOne() error {
 }
 
 func SolvePartTwo() error {
-	_, err := _read()
+	instructions, err := _read()
 	if err != nil {
 		return err
 	}
+
+	// true == black
+	tiles := make(map[image.Point]bool)
+
+	for _, ins := range instructions {
+		_, target := resolve(ins, image.Pt(0, 0))
+
+		_, ok := tiles[target]
+		if ok {
+			delete(tiles, target)
+		} else {
+			tiles[target] = true
+		}
+	}
+
+	for i := 0; i < 100; i++ {
+		neigh := map[image.Point]int{}
+		for ref := range tiles {
+			for _, n := range Neighbours() {
+				target := ref.Add(n)
+				neigh[target]++
+			}
+		}
+
+		next := make(map[image.Point]bool)
+		for ref, n := range neigh {
+			if _, ok := tiles[ref]; ok && n == 1 || n == 2 {
+				next[ref] = true
+			}
+		}
+		tiles = next
+	}
+
+	fmt.Println(len(tiles))
 
 	return nil
 }
